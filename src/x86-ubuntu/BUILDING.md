@@ -26,7 +26,7 @@ See [Troubleshooting](#troubleshooting) for more information.
 ## Changes from the base Ubuntu 22.04 image
 
 - The default user is `gem5` with password `12345`.
-- The `m5` utility is renamed to `gem5-bridge`
+- The `m5` utility is renamed to `gem5-bridge`.
   - `gem5-bridge` utility is installed in `/usr/local/bin/gem5-bridge`.
   - `gem5-bridge` has a symlink to `m5` for backwards compatibility.
   - `libm5` is installed in `/usr/local/lib/` and the headers for `libm5` are installed in `/usr/local/include/m5`.
@@ -41,18 +41,25 @@ See [Troubleshooting](#troubleshooting) for more information.
 ## Extending the Disk Image
 
 ### Customization of Post-Installation Processes
-- **Modify `post-installation.sh`**: Modify the actions executed after installation by editing the `x86-ubuntu/scripts/post-installation.sh` script. This is your primary method for specifying custom behavior post-install.
+
+- **Replace `gem5_init.sh`**: This script is what executes as the Linux init process (pid=0) immediately after Linux boot. If you have a custom initialization script, replace the default `gem5_init.sh` in both `x86-ubuntu.pkr.hcl` and `post-installation.sh` to integrate your custom initialization process.
 - **Replace `gem5_init.sh`**: If you have a custom initialization script, replace the default `gem5_init.sh` in both `x86-ubuntu.pkr.hcl` and `post-installation.sh` to integrate your custom initialization process.
 
 ### Handling the After-Boot Script
-- **Persistent Execution of `after-boot.sh`**: The `after-boot.sh` script executes at first login. To avoid its infinite execution, incorporate a conditional check in `post-installation.sh` similar to the following:
+
+- **Persistent Execution of `after-boot.sh`**: The `after-boot.sh` script executes at first login.
+To avoid its infinite execution, we incorporated a conditional check in `post-installation.sh` similar to the following:
+
   ```sh
   echo -e "\nif [ -z \"\$AFTER_BOOT_EXECUTED\" ]; then\n   export AFTER_BOOT_EXECUTED=1\n    /home/gem5/after_boot.sh\nfi\n" >> /home/gem5/.bashrc
   ```
+
   This ensures `after-boot.sh` runs only once per session by setting an environment variable.
 
 ### Adjusting File Permissions
+
 - **Setting Permissions for `gem5-bridge`**: Since the default user is not root, `gem5-bridge` requires root permissions. Apply setuid to grant these permissions:
+
   ```sh
   chmod u+s /path/to/gem5-bridge
   ```
@@ -60,10 +67,13 @@ See [Troubleshooting](#troubleshooting) for more information.
 ## Creating a Disk Image from Scratch
 
 ### Automated Ubuntu Installation
-- **Ubuntu Autoinstall**: Leverage Ubuntu's autoinstall feature for an automated setup process.
-- **Acquire `user-data` File**: Install your desired Ubuntu version on a machine or VM. Post-installation, retrieve the `autoinstall-user-data` from `/var/log/installer/autoinstall-user-data` after the system's first reboot. The `user-data` file in this repo, is made by selecting all default options except a minimal server installation.
+
+- **Ubuntu Autoinstall**: We leveraged Ubuntu's autoinstall feature for an automated setup process.
+- **Acquire `user-data` File**: To get the `user-data` file, install your desired Ubuntu version on a machine or VM. Post-installation, retrieve the `autoinstall-user-data` from `/var/log/installer/autoinstall-user-data` after the system's first reboot.
+The `user-data` file in this repo, is made by selecting all default options except a minimal server installation.
 
 ### Configuration and Directory Structure
+
 - **Determine QEMU Arguments**: Identify the QEMU arguments required for booting the system. These vary by ISA and mirror the arguments used for booting a disk image in QEMU.
 - **Directory Organization**: Arrange your source directory to include the `user-data` file and any additional content. Utilize the `provisioner` section for transferring extra files into the disk image, ensuring all necessary resources are embedded within your custom disk image.
 
@@ -88,4 +98,4 @@ mkdir x86-ubuntu/mount
 sudo mount -o loop,offset=2097152,norecovery x86-ubuntu/x86-ubuntu-image/x86-ubuntu x86-ubuntu/mount
 ```
 
-Useful documentation: https://ubuntu.com/server/docs/install/autoinstall
+Useful documentation: <https://ubuntu.com/server/docs/install/autoinstall>

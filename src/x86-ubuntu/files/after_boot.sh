@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# Copyright (c) 2022 The University of California.
+# Copyright (c) 2022,2024 The University of California.
 # Copyright (c) 2021 The University of Texas at Austin.
 # SPDX-License-Identifier: BSD 3-Clause
 
