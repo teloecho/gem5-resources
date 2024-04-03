@@ -1,3 +1,8 @@
+#!/bin/bash
+
+# Copyright (c) 2024 The Regents of the University of California.
+# SPDX-License-Identifier: BSD 3-Clause
+
 PACKER_VERSION="1.10.0"
 
 if [ ! -f ./packer ]; then
@@ -7,7 +12,7 @@ if [ ! -f ./packer ]; then
 fi
 
 # Install the needed plugins
-./packer init x86-ubuntu.pkr.hcl 
+./packer init x86-ubuntu.pkr.hcl
 
 # Build the image
-./packer build x86-ubuntu.pkr.hcl 
+./packer build x86-ubuntu.pkr.hcl

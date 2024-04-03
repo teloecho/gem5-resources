@@ -13,10 +13,10 @@ The `boot-exit` test passes a script that causes the guest OS to terminate the s
 - username: gem5
 - password: 12345
 
-The `m5` utility is installed in `/usr/local/bin/m5`.
+The `gem5-bridge`(m5) utility is installed in `/usr/local/bin/gem5-bridge`.
 `libm5` is installed in `/usr/local/lib/`.
-The headers for `libm5` are installed in `/usr/local/include/m5`.
-Thus, you should be able to build packages on the disk and easily link to the m5 library.
+The headers for `libm5` are installed in `/usr/local/include/gem5-bridge`.
+Thus, you should be able to build packages on the disk and easily link to the gem5-bridge library.
 
 The disk has network disabled by default to improve boot time in gem5.
 If you want to enable networking, you need to modify the disk image and move the file `/etc/netplan/00-installer-config.yaml.bak` to `/etc/netplan/00-installer-config.yaml`.
@@ -28,14 +28,70 @@ If you want to enable networking, you need to modify the disk image and move the
 - `scons`
 - `vim`
 
-### Boot options
+## Init Process and Exit Events
 
-There are two boot options available on the command line.
+This section outlines the disk image's boot process variations and the impact of specific boot parameters on its behavior. By default, the disk image boots with systemd in a non-interactive mode. Users can adjust this behavior through kernel arguments at boot time, influencing the init system and session interactivity.
 
-- "no_systemd" will boot the system without systemd and immediately drop you to a terminal after the linux kernel is initialized.
-- "no_m5_exit_on_boot" will *not* run the `m5 exit` command after the linux kernel initialization.
+### Boot Parameters
 
-By default, systemd is enabled and the `m5 exit` command is run after the linux kernel initialization.
+The disk image supports two main kernel arguments to adjust the boot process:
+
+- `no_systemd=true`: Disables systemd as the init system, allowing the system to boot without systemd's management.
+- `interactive=true`: Enables interactive mode, presenting a shell prompt to the user for interactive session management.
+
+Combining these parameters yields four possible boot configurations:
+
+1. **Default (Systemd, Non-Interactive)**: The system uses systemd for initialization and runs non-interactively.
+2. **Systemd and Interactive**: Systemd initializes the system, and the boot process enters an interactive mode, providing a user shell.
+3. **Without Systemd and Non-Interactive**: The system boots without systemd and proceeds non-interactively, executing predefined scripts.
+4. **Without Systemd and Interactive**: Boots without systemd and provides a shell for interactive use.
+
+### Boot Sequences
+
+#### Default Boot Sequence (Systemd, Non-Interactive)
+- Kernel output
+- **Kernel Booted print message**
+- Running systemd print message
+- Systemd output
+- autologin
+- **Running after_boot script**
+- Print indicating **non-interactive** mode
+- **Reading run script file**
+- Script output
+- Exit
+
+#### With Systemd and Interactive
+- Kernel output
+- **Kernel Booted print message**
+- Running systemd print message
+- Systemd output
+- autologin
+- **Running after_boot script**
+- Shell
+
+#### Without Systemd and Non-Interactive
+- Kernel output
+- **Kernel Booted print message**
+- autologin
+- **Running after_boot script**
+- Print indicating **non-interactive** mode
+- **Reading run script file**
+- Script output
+- Exit
+
+#### Without Systemd and Interactive
+- Kernel output
+- **Kernel Booted print message**
+- autologin
+- **Running after_boot script**
+- Shell
+
+### Note on Print Statements and Exit Events
+
+- The bold points in the sequence descriptions are `printf` statements in the code, indicating key moments in the boot process.
+- The `**` symbols mark gem5 exit events, essential for simulation purposes, dictating system shutdown or reboot actions based on the configured scenario.
+
+This detailed overview provides a foundational understanding of how different boot configurations affect the system's initialization and mode of operation. By selecting the appropriate parameters, users can customize the boot process for diverse environments, ranging from automated setups to hands-on interactive sessions.
 
 ## Example Run Scripts
 
@@ -64,3 +120,7 @@ scons build/X86/gem5.opt -j`nproc`
 ## Building and modifying the disk image
 
 See [BUILDING.md](BUILDING.md) for instructions on how to build the disk image.
+
+See [using-local-resources](https://www.gem5.org/documentation/gem5-stdlib/using-local-resources) for instructions on how to use customized resources in gem5 experiments.
+
+To boot in qemu, make sure to specify `/sbin/init.old` as the `init=` option on the kernel command line.
