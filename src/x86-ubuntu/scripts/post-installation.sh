@@ -5,6 +5,16 @@
 
 echo 'Post Installation Started'
 
+# Installing the packages in this script instead of the user-data
+# file dueing ubuntu autoinstall. The reason is that sometimes
+# the package install failes. This method is more reliable.
+echo 'installing packages'
+apt-get update
+apt-get install -y scons
+apt-get install -y git
+apt-get install -y vim
+apt-get install -y build-essential
+
 echo "Installing serial service for autologin after systemd"
 mv /home/gem5/serial-getty@.service /lib/systemd/system/
 
