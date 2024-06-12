@@ -78,4 +78,9 @@ build {
     expect_disconnect = true
   }
 
+  provisioner "file" {
+  source      = "/home/gem5/vmlinux-x86-ubuntu"
+  destination = "./disk-image-ubuntu-24-04/vmlinux-x86-ubuntu"
+  direction   = "download"
+  }
 }

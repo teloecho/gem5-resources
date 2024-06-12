@@ -18,6 +18,13 @@ apt-get install -y build-essential
 echo "Installing serial service for autologin after systemd"
 mv /home/gem5/serial-getty@.service /lib/systemd/system/
 
+# Make sure the headers are installed to extract the kernel that DKMS
+# packages will be built against.
+sudo apt -y install "linux-headers-$(uname -r)" "linux-modules-extra-$(uname -r)"
+
+echo "Extracting linux kernel $(uname -r) to /home/gem5/vmlinux-x86-ubuntu"
+sudo bash -c "/usr/src/linux-headers-$(uname -r)/scripts/extract-vmlinux /boot/vmlinuz-$(uname -r) > /home/gem5/vmlinux-x86-ubuntu"
+
 echo "Installing the gem5 init script in /sbin"
 mv /home/gem5/gem5_init.sh /sbin
 mv /sbin/init /sbin/init.old
@@ -75,5 +82,8 @@ elif [ -f /etc/netplan/00-installer-config.yaml ]; then
     mv /etc/netplan/00-installer-config.yaml /etc/netplan/00-installer-config.yaml.bak
     netplan apply
 fi
+# Disable systemd service that waits for network to be online
+systemctl disable systemd-networkd-wait-online.service
+systemctl mask systemd-networkd-wait-online.service
 
 echo "Post Installation Done"
