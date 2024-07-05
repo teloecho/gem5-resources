@@ -1,22 +1,23 @@
-HIP_PATH ?= /opt/rocm/hip
+HIP_PATH ?= /opt/rocm
 HIPCC = $(HIP_PATH)/bin/hipcc
 
-BASEEXE = color
-VARIANT ?= MAX
-ifeq ($(VARIANT),MAX)
-	EXECUTABLE = $(BASEEXE)_max
-	CPPFILES += coloring_max.cpp
-else ifeq ($(VARIANT),MAXMIN)
-	EXECUTABLE = $(BASEEXE)_maxmin
-	CPPFILES += coloring_maxmin.cpp
-endif
+MAX_EXE = color_max.default
+MAXMIN_EXE = color_maxmin.default
 
-BIN_DIR ?= ./bin
+MAX_CPP = coloring_max.cpp
+MAXMIN_CPP = coloring_maxmin.cpp
 
-all: $(BIN_DIR)/$(EXECUTABLE)
+CPPSRC = ../graph_parser/util.cpp ../graph_parser/parse.cpp
+OPTS = -O3 -Wno-unused-result
+BIN_DIR ?= ./bin.default
 
-$(BIN_DIR)/$(EXECUTABLE): $(CPPFILES) ../graph_parser/parse.cpp ../graph_parser/util.cpp $(BIN_DIR)
-	$(HIPCC) -O3 --amdgpu-target=gfx801,gfx803,gfx900,gfx906 $(CXXFLAGS) ../graph_parser/parse.cpp ../graph_parser/util.cpp $(CPPFILES) -o $(BIN_DIR)/$(EXECUTABLE)
+all: $(BIN_DIR)/$(MAX_EXE) $(BIN_DIR)/$(MAXMIN_EXE)
+
+$(BIN_DIR)/$(MAX_EXE): $(MAX_CPP) ../graph_parser/parse.cpp ../graph_parser/util.cpp $(BIN_DIR)
+	$(HIPCC) $(OPTS) --offload-arch=gfx900,gfx90a,gfx942 $(CXXFLAGS) $(MAX_CPP) $(CPPSRC) -o $(BIN_DIR)/$(MAX_EXE)
+
+$(BIN_DIR)/$(MAXMIN_EXE): $(MAXMIN_CPP) ../graph_parser/parse.cpp ../graph_parser/util.cpp $(BIN_DIR)
+	$(HIPCC) $(OPTS) --offload-arch=gfx900,gfx90a,gfx942 $(CXXFLAGS) $(MAXMIN_CPP) $(CPPSRC) -o $(BIN_DIR)/$(MAXMIN_EXE)
 
 $(BIN_DIR):
 	mkdir -p $(BIN_DIR)
