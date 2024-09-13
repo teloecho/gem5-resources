@@ -40,6 +40,12 @@ rm /etc/update-motd.d/*
 # Build and install the gem5-bridge (m5) binary, library, and headers
 echo "Building and installing gem5-bridge (m5) and libm5"
 
+# Ensure the ISA environment variable is set
+if [ -z "$ISA" ]; then
+  echo "Error: ISA environment variable is not set."
+  exit 1
+fi
+
 # Just get the files we need
 git clone https://github.com/gem5/gem5.git --depth=1 --filter=blob:none --no-checkout --sparse --single-branch --branch=stable
 pushd gem5
@@ -52,11 +58,11 @@ cp -r include/gem5 /usr/local/include/\
 
 # Build the library and binary
 pushd util/m5
-scons build/x86/out/m5
-cp build/x86/out/m5 /usr/local/bin/
-cp build/x86/out/libm5.a /usr/local/lib/
-popd
-popd
+scons build/${ISA}/out/m5
+cp build/${ISA}/out/m5 /usr/local/bin/
+cp build/${ISA}/out/libm5.a /usr/local/lib/
+popd   # util/m5
+popd   # gem5
 
 # rename the m5 binary to gem5-bridge
 mv /usr/local/bin/m5 /usr/local/bin/gem5-bridge
@@ -71,7 +77,8 @@ ln -s /usr/local/bin/gem5-bridge /usr/local/bin/m5
 rm -rf gem5
 echo "Done building and installing gem5-bridge (m5) and libm5"
 
-# You can extend this script to install your own packages here or by modifying the `x86-ubuntu.pkr.hcl` file.
+# You can extend this script to install your own packages here or by modifying the `x86-ubuntu.pkr.hcl`
+# or `arm-ubuntu.pkr.hcl` file depending on the disk you are building.
 
 # Disable network by default
 echo "Disabling network by default"

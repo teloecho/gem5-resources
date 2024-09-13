@@ -1,37 +1,60 @@
 ---
-title: Building the base x86-ubuntu image
+title: Building the base x86-ubuntu and arm-ubuntu image for Ubuntu 22.04 and 24.04
 authors:
     - Harshil Patel
 ---
 
-This document provides instructions to create the "x86-ubuntu" image. This image is a 22.04 Ubuntu image.
+This document provides instructions to create the "x86-ubuntu" image and "arm-ubuntu" image.
+This image can be a 22.04 or 24.04 Ubuntu image.
 
 ## Directory map
 
 - `files`: Files that are copied to the disk image.
 - `scripts`: Scripts run on the disk image after installation.
-- `http`: cloud-init Ubuntu autoinstall files.
-- `disk-image`: The disk image output directory.
+- `http`: cloud-init Ubuntu autoinstall files for different versions of Ubuntu for Arm and x86.
+  - `arm-22-04`: cloud-init Ubuntu autoinstall files for arm ubuntu 22.04 image.
+  - `arm-24-04`: cloud-init Ubuntu autoinstall files for arm ubuntu 24.04 image.
+  - `x86`: cloud-init Ubuntu autoinstall files for x86 ubuntu 22.04 and 24.04 images.
+- `x86-disk-image-24.04`: Disk image output directory for x86 ubuntu 24.04 image.
+- `x86-disk-image-22.04`: Disk image output directory for x86 ubuntu 22.04 image.
+- `arm-disk-image-24.04`: Disk image output directory for arm ubuntu 24.04 image.
+- `arm-disk-image-22.04`: Disk image output directory for arm ubuntu 22.04 image.
 
 ## Disk Image
 
-Run `./build.sh` in the `x86-ubuntu` directory to build the disk image.
+Run `build-x86.sh` with the argument `22.04` or `24.04` to build the respective x86 disk image in the `ubuntu-generic-diskimages` directory.
+Run `build-arm.sh` with the argument `22.04` or `24.04` to build the respective arm disk image in the `ubuntu-generic-diskimages` directory.
+Building the arm image assume that we are on an ARM machine as we use kvm to build the image.
+You can also run the packer file by adding the "use_kvm=false" in `build-arm.sh` in the `./packer build` command to build the disk image without KVM.
 This will download the packer binary, initialize packer, and build the disk image.
 
-Note: This can take a while to run.
+## Arm image specific requirements
+
+We need a EFI file to boot the arm image. We use the file named `flash0.img` in the packer file.
+
+To get the `flash0.img` run the following commands in the `files` directory
+
+```bash
+dd if=/dev/zero of=flash0.img bs=1M count=64
+dd if=/usr/share/qemu-efi-aarch64/QEMU_EFI.fd of=flash0.img conv=notrunc
+```
+
+**Note**: The `build-arm.sh` will make this file for you.
+
+Note: Building the image can take a while to run.
 You will see `qemu.initialize: Waiting for SSH to become available...` while the installation is running.
 You can watch the installation with a VNC viewer.
 See [Troubleshooting](#troubleshooting) for more information.
 
 ## Kernel
 
-A kernel is also extracted from the disk image during the post-installation process.
-The latest headers and modules are installed using apt, before extracting the kernel using the `extract-vmlinux` script provided in ubuntu. The extracted kernel is placed at `/home/gem5/vmlinux-x86-ubuntu`.
+For the x86 disk images a kernel is also extracted from the disk image during the post-installation process.
+The extracted kernel does not have a version in its name, but the kernel version is printed before the extraction in `post-installation.sh` script. This extracted kernel can be used as a resource for gem5 simulations and is not limited to just be used with this disk image.
 The extracted kernel does not have a version its name, but the kernel version is printed as before the extraction in `post-installation.sh` script. This extracted kernel can be used as a resource for gem5 simulations and is not limited to just be used with this disk image.
 
 The kernel is extracted using packer's file provisioner with `direction=download` which would copy a file from the image to the host machine. The path specifying in the provisioner copies the file `/home/gem5/vmlinux-x86-ubuntu` to the output directory `disk-image`.
 
-## Changes from the base Ubuntu 22.04 image
+## Changes from the base Ubuntu image
 
 - The default user is `gem5` with password `12345`.
 - The `m5` utility is renamed to `gem5-bridge`.
@@ -43,29 +66,27 @@ The kernel is extracted using packer's file provisioner with `direction=download
   - The `gem5-bridge exit` command is run after the linux kernel initialization by default.
   - If the `no_systemd` boot option is passed, systemd is not run and the user is dropped to a terminal.
   - If the `interactive` boot option is passed, the `gem5-bridge exit` command is not run after the linux kernel initialization.
-- Networking is disabled by moving the `/etc/netplan/00-installer-config.yaml` file to `/etc/netplan/00-installer-config.yaml.bak`. The `systemd-networkd-wait-online.service` is also disabled.
-  - If you want to enable networking, you need to modify the disk image and move the file `/etc/netplan/00-installer-config.yaml.bak` to `/etc/netplan/00-installer-config.yaml`.
+- Networking is disabled by moving the `/etc/netplan/00-installer-config.yaml` or `/etc/netplan/50-cloud-init.yaml` file to `/etc/netplan/00-installer-config.yaml.bak` or `/etc/netplan/50-cloud-init.yaml.bak` respectively. The `systemd-networkd-wait-online.service` is also disabled.
+The x86 22.04 image should have `00-installer-config.yaml` while all the other disk images should have `50-cloud-init.yaml`.
+  - If you want to enable networking, you need to modify the disk image and move the file `/etc/netplan/00-installer-config.yaml.bak` or `/etc/netplan/50-cloud-init.yaml.bak` to `/etc/netplan/00-installer-config.yaml` or `/etc/netplan/50-cloud-init.yaml` depending on which config file the disk image contains.
   To re-enable `systemd-networkd-wait-online.service`, first, unmask the service with `sudo systemctl unmask systemd-networkd-wait-online.service` and then enable the service to start with `sudo systemctl enable systemd-networkd-wait-online.service`.
   If you require the service to start immediately without waiting for the next boot then also run the following:
   `sudo systemctl start systemd-networkd-wait-online.service`.
 
-## Extending the Disk Image
+### Customization of the boot Processes
 
-### Customization of Post-Installation Processes
+- **`gem5_init.sh` replaces /sbin/init**: This script is what executes as the Linux init process (pid=0) immediately after Linux boot. This script adds an `gem5-bridge exit` when the file is executed. It also checks the `no_systemd` kernel arg to redirect to the user or boot with systemd.
 
-- **Replace `gem5_init.sh`**: This script is what executes as the Linux init process (pid=0) immediately after Linux boot. If you have a custom initialization script, replace the default `gem5_init.sh` in both `x86-ubuntu.pkr.hcl` and `post-installation.sh` to integrate your custom initialization process.
-- **Replace `gem5_init.sh`**: If you have a custom initialization script, replace the default `gem5_init.sh` in both `x86-ubuntu.pkr.hcl` and `post-installation.sh` to integrate your custom initialization process.
-
-### Handling the After-Boot Script
+### Details of the After-Boot Script
 
 - **Persistent Execution of `after-boot.sh`**: The `after-boot.sh` script executes at first login.
 To avoid its infinite execution, we incorporated a conditional check in `post-installation.sh` similar to the following:
 
-  ```sh
-  echo -e "\nif [ -z \"\$AFTER_BOOT_EXECUTED\" ]; then\n   export AFTER_BOOT_EXECUTED=1\n    /home/gem5/after_boot.sh\nfi\n" >> /home/gem5/.bashrc
-  ```
+```sh
+echo -e "\nif [ -z \"\$AFTER_BOOT_EXECUTED\" ]; then\n   export AFTER_BOOT_EXECUTED=1\n    /home/gem5/after_boot.sh\nfi\n" >> /home/gem5/.bashrc
+```
 
-  This ensures `after-boot.sh` runs only once per session by setting an environment variable.
+This ensures `after-boot.sh` runs only once per session by setting an environment variable.
 
 ### Adjusting File Permissions
 
@@ -74,6 +95,24 @@ To avoid its infinite execution, we incorporated a conditional check in `post-in
   ```sh
   chmod u+s /path/to/gem5-bridge
   ```
+
+## Extending the disk image with custom files and scripts
+
+- You can add more packages to the disk image by updating the `post-installation.sh` script.
+- To add files from host to the disk image you can add a file provisioner with source as path in host and destination as path in the image.
+
+```hcl
+provisioner "file" {
+    destination = "/home/gem5/"
+    source      = "path/to/files"
+  }
+```
+
+If you need to increase the size of the image when adding more libraries and files to the image update the size of the partition in the respective `http/*/user-data` file. Also, update the `disk_size` parameter in `post-installation.sh` to be at least one mega byte more than the size you defined in the `user-data` file.
+
+**NOTE:** You can extend this disk image by modifying the `post-installation.sh` script, but it requires building the image from scratch.
+
+To take a pre-built image and add new files or packages, take a look at the following [documentation](https://www.gem5.org/documentation/gem5-stdlib/extending-disk-images).
 
 ## Creating a Disk Image from Scratch
 
