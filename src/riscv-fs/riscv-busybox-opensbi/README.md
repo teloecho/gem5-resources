@@ -36,36 +36,43 @@ riscv-all-in-one/
 ```
 
 # Building the resource
-## Step 1. Building the `riscv-gnu-toolchain`
-In this step, we'll use
-[GNU toolchain for RISC-V](https://github.com/riscv-collab/riscv-gnu-toolchain).
+## Step 1. Getting the `riscv-gnu-toolchain`
 
-This step is necessary if you do not have basic libraries built for RISCV or
-if you're cross-compiling RISCV.
+We'll use the precompiled toolchain for Debian 12 (Bookworm) System,
+package `g++-12-riscv64-linux-gnu`, version `12.2.0-13cross1`.
+Install it by running:
 
 ```sh
-cd riscv-all-in-one/
-git clone https://github.com/riscv-collab/riscv-gnu-toolchain.git
-cd riscv-gnu-toolchain
-git switch --detach 20f615317e2ce888dfc11b29ccde4a649494b654 # for reproducability, newer versions should work either
-mkdir build
-cd build
-# --prefix parameter specifying the installation location
-# --enable-multilib build either cross-compiler with support for both 32-bit and 64-bit
-../configure --prefix=/path/to/rvtoolchain --enable-multilib
-make linux -j$(nproc)
+sudo apt install g++-12-riscv64-linux-gnu
+
+# The shipped toolchain version might use weird `-12` suffixes. Setting custom
+# toolchain suffixes in the makefiles is cumbersome, therefore link the tools
+# to the regular prefix naming scheme.
+# (Taken from [riscv-opensbi](src/riscv-fs/riscv-opensbi/build-env.dockerfile))
+sudo su
+ln -s /usr/bin/riscv64-linux-gnu-cpp-12 /usr/bin/riscv64-linux-gnu-cpp & \
+ln -s /usr/bin/riscv64-linux-gnu-cpp-12 /usr/bin/riscv64-linux-gnu-cpp & \
+ln -s /usr/bin/riscv64-linux-gnu-g++-12 /usr/bin/riscv64-linux-gnu-g++ & \
+ln -s /usr/bin/riscv64-linux-gnu-gcc-12 /usr/bin/riscv64-linux-gnu-gcc & \
+ln -s /usr/bin/riscv64-linux-gnu-gcc-ar-12 /usr/bin/riscv64-linux-gnu-gcc-ar & \
+ln -s /usr/bin/riscv64-linux-gnu-gcc-nm-12 /usr/bin/riscv64-linux-gnu-gcc-nm & \
+ln -s /usr/bin/riscv64-linux-gnu-gcc-ranlib-12 /usr/bin/riscv64-linux-gnu-gcc-ranlib & \
+ln -s /usr/bin/riscv64-linux-gnu-gcov-12 /usr/bin/riscv64-linux-gnu-gcov & \
+ln -s /usr/bin/riscv64-linux-gnu-gcov-dump-12 /usr/bin/riscv64-linux-gnu-gcov-dump & \
+ln -s /usr/bin/riscv64-linux-gnu-gcov-tool-12 /usr/bin/riscv64-linux-gnu-gcov-tool & \
+ln -s /usr/bin/riscv64-linux-gnu-lto-dump-12 /usr/bin/riscv64-linux-gnu-lto-dump
+exit # the root mode
 ```
-To update the PATH environment variable so that the RISCV compilers can be
-found,
-```sh
-export PATH=/path/to/rvtoolchain/bin/:$PATH
-```
+
+If you want to build the [GNU toolchain for RISC-V](https://github.com/riscv-collab/riscv-gnu-toolchain)
+yourself, use the `--enable-multilib` flag on the `configure` step and `make` the
+`linux` target.
 
 ## Step 2. Getting and Building `busybox`
 More information about Busybox is [here](https://www.busybox.net/).
 ```sh
 cd riscv-all-in-one/
-git clone --branch 1_36_stable https://git.busybox.net/busybox.git # choose a stable branch
+git clone --branch 1_36_stable https://git.busybox.net/busybox.git
 
 # alternatively downloading tar
 wget https://git.busybox.net/busybox/snapshot/busybox-1_36_1.tar.bz2
@@ -74,30 +81,25 @@ mv busybox-1_36_1 busybox
 
 cd busybox
 # create a default configuration
-make CROSS_COMPILE=riscv64-unknown-linux-gnu- defconfig
-make CROSS_COMPILE=riscv64-unknown-linux-gnu- menuconfig
+make CROSS_COMPILE=riscv64-linux-gnu- defconfig
+make CROSS_COMPILE=riscv64-linux-gnu- menuconfig
 # Configure static linking in order to simplify things.
 # Settings --->
 # Build Options --->
 # Build static binary (no shared libs) ---> yes
-make CROSS_COMPILE=riscv64-unknown-linux-gnu- all -j$(nproc)
-make CROSS_COMPILE=riscv64-unknown-linux-gnu- install # optional
+make CROSS_COMPILE=riscv64-linux-gnu- all -j$(nproc)
+make CROSS_COMPILE=riscv64-linux-gnu- install # optional
 ```
 The files of interest are in `busybox/_install/bin`.
 
 ## Step 3. Compiling the Workload (e.g. gem5's m5)
-Change to the directory with your clone of gem5 version 24.0.0.1.
+Change to the directory with your clone of gem5 version `24.0.0.1`.
 ```sh
 cd gem5/
 cd util/m5
-scons build/riscv/out/m5
-```
-**Note**: the default cross-compiler is `riscv64-unknown-linux-gnu-`.
-To change the cross-compiler, you can set the cross-compiler using the scons
-sticky variable `riscv.CROSS_COMPILE`. For example,
-```sh
 scons riscv.CROSS_COMPILE=riscv64-linux-gnu- build/riscv/out/m5
 ```
+**Note**: the default cross-compiler is `riscv64-unknown-linux-gnu-`.
 
 ## Step 4. Determining the Structure of `initramfs`
 Your Linux requires a *file system* in order to properly run. So we will
@@ -212,13 +214,12 @@ tar xf linux-6.11.10.tar.xz
 mv linux-6.11.10 linux
 
 cd linux
-# ?? CFLAGS_KERNEL=" -march=rv64gc"
-make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- defconfig
-make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- menuconfig
+make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- defconfig
+make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- menuconfig
 # Go to "General setup --->"
 #   Check on "Initial RAM filesystem and RAM disk (initramfs/initrd) support"
 #   Change "Initramfs source file(s)" to the absoblute path of riscv-all-in-one/cpio/initramfs.cpio
-make ARCH=riscv CROSS_COMPILE=riscv64-unknown-linux-gnu- all -j$(nproc)
+make ARCH=riscv CROSS_COMPILE=riscv64-linux-gnu- all -j$(nproc)
 ```
 The file of interest is at `arch/riscv/boot/Image`.
 
@@ -228,7 +229,7 @@ cd riscv-all-in-one/
 git clone https://github.com/riscv-software-src/opensbi
 cd opensbi
 git switch --detach v1.4
-make PLATFORM=generic FW_PAYLOAD_PATH=../linux/arch/riscv/boot/Image CROSS_COMPILE=riscv64-unknown-linux-gnu- -j$(nproc)
+make CROSS_COMPILE=riscv64-linux-gnu- PLATFORM=generic FW_PAYLOAD_PATH=../linux/arch/riscv/boot/Image -j$(nproc)
 ```
 The desired bootloader file is at `build/platform/generic/firmware/fw_payload.elf`.
 
