@@ -35,7 +35,7 @@ riscv-all-in-one/
     ├── linux/                  # linux source
     ├── opensbi/                # OpenSBI source, providing a RISC-V bootloader
     ├── riscv-gnu-toolchain/    # riscv tool chain for cross compilation
-    └── README.md               # This README file
+    └── README.md               # Copy/link of this README file
 ```
 
 ## Building the resource
@@ -286,7 +286,7 @@ for its usage. However [setting up local resources](https://www.gem5.org/documen
 is quite straight forward either and preferred for reproducability reasons.
 
 ```sh
-./build/RISCV/gem5.opt configs/example/riscv/fs_linux.py --kernel="../gem5-resources/src/riscv-fs/riscv-fs-busybox-opensbi-nodisk/opensbi/build/platform/generic/firmware/fw_payload.elf"
+./build/RISCV/gem5.opt configs/example/riscv/fs_linux.py --kernel="/path/to/your/riscv-all-in-one/opensbi/build/platform/generic/firmware/fw_payload.elf"
 ```
 
 You can check the console output with `telnet` or gem5's `m5term`,
