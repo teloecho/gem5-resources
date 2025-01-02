@@ -101,7 +101,7 @@ The files of interest are in `busybox/_install/bin`.
 
 ### Step 3. Compiling the Workload (e.g. gem5's m5)
 
-Change to the directory with your clone of gem5 version `24.0.0.1`.
+Change to the directory with your clone of gem5 version `24.1.0.1`.
 
 ```sh
 cd gem5/
