@@ -1,13 +1,14 @@
 ---
 title: RISC-V Full System in One Kernel Resource
 tags:
+    - riscv
     - fullsystem
     - bootloader
-    - riscv
+    - nodisk
 layout: default
-permalink: resources/riscv-fs-busybox-opensbi
+permalink: resources/riscv-fs-busybox-opensbi-nodisk
 shortdoc: >
-    Resources to build an OpenSBI bootloader with Linux image, initramfs and Busybox that works with gem5 full system simulations.
+    Resources to build an OpenSBI bootloader with Linux kernel image, initramfs and Busybox that works with gem5 full system simulations.
 author: ["Jonathan Kretschmer"]
 ---
 
@@ -17,12 +18,13 @@ This document provides instructions to create an
 [OpenSBI](https://github.com/riscv-software-src/opensbi) bootloader binary
 with Linux kernel image payload containing an initramfs with
 [Busybox](https://www.busybox.net/) that works with gem5 full system simulations.
+No extra disk image required by leveraging Linux's early userspace support.
 
 This guide is inspired by and partly copied from
 [riscv-fs-nodisk](https://github.com/gem5/gem5-resources/blob/stable/src/riscv-fs-alt/riscv-boot-exit-nodisk/README.md)
 and [Linux on RISC-V using QEMU and BUSYBOX from scratch](https://risc-v-machines.readthedocs.io/en/latest/linux/simple/).
 
-For this guide we assume following directory structure. Gem5 source itself is
+The instructions assume following directory structure. Gem5 source itself is
 required either, but not listed here to avoid duplication.
 
 ```
@@ -259,13 +261,32 @@ make CROSS_COMPILE=riscv64-linux-gnu- PLATFORM=generic FW_PAYLOAD_PATH=../linux/
 
 The desired bootloader file is at `build/platform/generic/firmware/fw_payload.elf`.
 
-## Example
+## Example Run
 
-You can run the created bootloader with Linux and Busybox payload using the example riscv `fs_linux.py` config,
+You can run the created bootloader with Linux and Busybox payload using the
+example config `configs/example/gem5_library/riscv-fs.py` from the gem5
+repository.
+Change the passed value of the parameter `kernel` for the
+[`board.set_kernel_disk_workload`](https://www.gem5.org/documentation/general_docs/stdlib_api/gem5.components.boards.riscv_board.html)
+method call to
+`obtain_resource("riscv-fs-busybox-opensbi-nodisk", resource_version="1.0.0")`.
+Leave the `disk_image` value as it is or set it to some dummy disk. As it is a
+*nodisk* resource the disk image is not used, but it may not be blank or `None`
+for the method call unfortunately.
+Adding the parameter `bootloader=obtain_resource("riscv-fs-busybox-opensbi-nodisk", resource_version="1.0.0")`
+has the overall same effect, however the `kernel` parameter requires some dummy value again.
 
 ```sh
-cd gem5
-./build/RISCV/gem5.opt configs/example/riscv/fs_linux.py --kernel="../gem5-resources/src/riscv-fs/riscv-all-in-one/opensbi/build/platform/generic/firmware/fw_payload.elf"
+cd gem5/
+./build/RISCV/gem5.opt configs/example/gem5_library/riscv-fs.py
+```
+
+For a quick test the `fs_linux.py` config might be helpful. See next code block
+for its usage. However [setting up local resources](https://www.gem5.org/documentation/gem5-stdlib/using-local-resources)
+is quite straight forward either and preferred for reproducability reasons.
+
+```sh
+./build/RISCV/gem5.opt configs/example/riscv/fs_linux.py --kernel="../gem5-resources/src/riscv-fs/riscv-fs-busybox-opensbi-nodisk/opensbi/build/platform/generic/firmware/fw_payload.elf"
 ```
 
 You can check the console output with `telnet` or gem5's `m5term`,
@@ -277,3 +298,18 @@ cd util/term
 make
 ./m5term localhost <port>
 ```
+
+## Licensing
+
+OpenSBI is distributed under the terms of the
+[BSD 2-clause license](https://github.com/riscv-software-src/opensbi?tab=License-1-ov-file).
+
+Linux is released under the GNU General Public License version 2 (GPLv2), but
+it also contains several files under other compatible licenses. For more
+information about Linux Kernel Copy Right please refer to
+[here](https://www.kernel.org/legal.html) and
+[here](https://www.kernel.org/doc/html/latest/process/license-rules.html#kernel-licensing).
+
+Busybox is also released under the GNU General Public License version 2 (GPLv2).
+For more information about Busybox Copy Right please refer to
+[here](https://busybox.net/license.html).
