@@ -156,6 +156,19 @@ Create `initramfs/init` script with the following content,
 
 ```
 #!/bin/busybox sh
+# content of /init
+
+/sbin/m5 exit # replace with desired workload
+
+# or install busybox applets and setup shell
+#exec /setup_shell # script to execute the workload
+```
+
+Create `initramfs/setup_shell` script with the following content,
+
+```
+#!/bin/busybox sh
+# content of /setup_shell
 
 # Make symlinks
 /bin/busybox --install -s
@@ -166,23 +179,19 @@ mount -t proc      proc      /proc
 mount -t sysfs     sysfs     /sys
 mount -t tmpfs     tmpfs     /tmp
 
-# Busybox TTY fix
-setsid cttyhack sh
-
-# https://git.busybox.net/busybox/tree/docs/mdev.txt?h=1_32_stable
+# https://git.busybox.net/busybox/tree/docs/mdev.txt?h=1_36_stable
 echo /sbin/mdev > /proc/sys/kernel/hotplug
 mdev -s
 
-# enter a shell
-#sh
-# or execute the workload
-/sbin/m5 exit # replace with desired workload
+# Busybox TTY fix
+setsid cttyhack sh
 ```
 
-Add executable flag:
+Add executable flags:
 
 ```sh
 chmod +x init
+chmod +x setup_shell
 ```
 
 At this stage, your initramfs should look like:
